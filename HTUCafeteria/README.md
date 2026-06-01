@@ -1,56 +1,197 @@
-# Welcome to your Expo app 👋
+# 🍽️ Expert HTU Cafeteria
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A full-featured food ordering platform for Ho Technical University (HTU) Cafeteria built with React Native, Expo, and TypeScript. Students can browse authentic Ghanaian cuisine, place orders seamlessly, track deliveries in real-time, and manage their food preferences—all while admins handle menu and order management through an intuitive dashboard.
 
-## Get started
+## 📋 Features
 
-1. Install dependencies
+### 👨‍🎓 For Students & Customers
+- **Browse Menu**: Explore diverse Ghanaian dishes with detailed descriptions, ratings, and preparation times
+- **Smart Cart**: Add items, customize quantities, and add special notes to orders
+- **Multiple Payment Options**: Pay via mobile money (MoMo) or cash on delivery
+- **Order Tracking**: Real-time status updates (pending → preparing → ready → delivered)
+- **Notifications**: Get alerts for order updates and special promotions
+- **Order History**: View past orders and reorder favorites
+- **User Profile**: Manage personal information and preferences
+- **Category Filtering**: Browse by rice dishes, soups, fast food, snacks, drinks, breakfast, etc.
 
+### 👨‍💼 For Admins
+- **Dashboard**: Complete overview of orders and menu analytics
+- **Menu Management**: Add, edit, and remove food items with pricing and availability
+- **Order Management**: Monitor incoming orders, update statuses, and track deliveries
+- **Inventory Control**: Mark items as available/unavailable in real-time
+
+### 🎯 General Features
+- **Authentication**: Secure login for students and admin staff
+- **Onboarding**: Smooth first-time user experience with guided setup
+- **Dark Mode Support**: Automatic theme adaptation based on device settings
+- **Responsive Design**: Optimized for iOS, Android, and Web platforms
+- **State Management**: Zustand for efficient global state management
+- **File-based Routing**: Modern app navigation with Expo Router
+
+## 🛠️ Tech Stack
+
+- **React Native** - Cross-platform mobile development
+- **Expo** - Development platform and managed hosting
+- **TypeScript** - Type-safe development
+- **Expo Router** - File-based routing system
+- **Zustand** - Lightweight state management
+- **React Native Gesture Handler** - Smooth gesture interactions
+- **React Native Reanimated** - Fluid animations
+- **Expo Vector Icons** - Beautiful icon library
+
+## 📁 Project Structure
+
+```
+HTUCafeteria/
+├── src/
+│   ├── app/                  # Main app screens and routing
+│   │   ├── (auth)           # Authentication screens (login, register)
+│   │   ├── (tabs)           # Tab-based navigation (menu, orders, profile)
+│   │   ├── (admin)          # Admin-only screens (dashboard, manage)
+│   │   ├── cart.tsx         # Shopping cart screen
+│   │   ├── checkout.tsx     # Checkout & payment screen
+│   │   └── order-success.tsx # Order confirmation
+│   ├── components/           # Reusable UI components
+│   │   ├── CartItem.tsx
+│   │   ├── FoodCard.tsx
+│   │   ├── OrderCard.tsx
+│   │   └── ui/              # Base UI components
+│   ├── store/               # State management
+│   │   ├── authStore.ts
+│   │   └── cartStore.ts
+│   ├── constants/           # App constants
+│   │   ├── Colors.ts
+│   │   ├── data.ts          # Menu items and mock data
+│   │   └── theme.ts
+│   └── hooks/               # Custom React hooks
+├── assets/                  # Images, icons, and media
+└── package.json            # Dependencies
+
+```
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or yarn
+- Expo CLI: `npm install -g expo-cli`
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/rocksonowusu/ExpertCateringServices_HTU.git
+   cd HTUCafeteria
+   ```
+
+2. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. **Start the development server**
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. **Run on your device or emulator**
+   - Press `i` for iOS simulator
+   - Press `a` for Android emulator
+   - Press `w` for web
+   - Scan QR code with Expo Go app (physical device)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 📱 Mock Credentials
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Student Login
+- **Email**: `student@htu.edu.gh`
+- **Password**: `password123`
 
-## Get a fresh project
+### Admin Login
+- **Email**: `admin@htu.edu.gh`
+- **Password**: `admin123`
 
-When you're ready, run:
+## 🔧 Development
 
+### Run with Development Build
+```bash
+npx expo run:android
+npx expo run:ios
+```
+
+### Lint & Format
+```bash
+npx expo lint
+```
+
+### Reset Project
 ```bash
 npm run reset-project
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 📦 Build & Deployment
 
-### Other setup steps
+### Build APK (Android)
+```bash
+eas build --platform android
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+### Build IPA (iOS)
+```bash
+eas build --platform ios
+```
 
-## Learn more
+### Deploy to Expo
+```bash
+eas submit --platform android
+eas submit --platform ios
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## 🎨 Customization
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Update Colors
+Edit [src/constants/Colors.ts](src/constants/Colors.ts) to customize the app theme.
 
-## Join the community
+### Add Menu Items
+Modify [src/constants/data.ts](src/constants/data.ts) to add new food items.
 
-Join our community of developers creating universal apps.
+### Update University Branding
+- Change app name in `app.json`
+- Update logo in `assets/images/`
+- Modify brand colors in `src/constants/Colors.ts`
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 📝 API Integration (Future)
+
+The app is currently using mock data. To connect to a backend:
+
+1. Replace mock API calls in `src/store/authStore.ts` and `src/store/cartStore.ts`
+2. Implement API endpoints for:
+   - User authentication
+   - Menu retrieval
+   - Order placement & tracking
+   - Payment processing
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👥 Team
+
+- **Developer**: Rockson Kwesi Owusu
+
+## 📧 Support
+
+For questions, issues, or suggestions, please open an issue on GitHub or contact the development team.
+
+---
+
+**Made with ❤️ for HTU Community**
