@@ -5,12 +5,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Button } from '@/components/ui/Button';
-
-const ORDER_ID = `HTU${String(Math.floor(10000 + Math.random() * 90000)).slice(0, 5)}`;
 
 const STATUS_STEPS = [
   { icon: 'checkmark-circle', label: 'Order Placed', done: true },
@@ -20,6 +18,8 @@ const STATUS_STEPS = [
 
 export default function OrderSuccessScreen() {
   const router = useRouter();
+  const { code } = useLocalSearchParams<{ code?: string }>();
+  const orderId = code ?? 'HTU000000';
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -42,7 +42,7 @@ export default function OrderSuccessScreen() {
         {/* Order ID card */}
         <View style={styles.orderIdCard}>
           <Text style={styles.orderIdLabel}>Order ID</Text>
-          <Text style={styles.orderIdValue}>#{ORDER_ID}</Text>
+          <Text style={styles.orderIdValue}>#{orderId}</Text>
           <TouchableOpacity style={styles.copyBtn} activeOpacity={0.8}>
             <Ionicons name="copy-outline" size={14} color={Colors.primary} />
             <Text style={styles.copyText}>Copy</Text>

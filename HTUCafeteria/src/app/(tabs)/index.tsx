@@ -16,33 +16,16 @@ import { Colors } from '@/constants/Colors';
 import { FoodCard } from '@/components/FoodCard';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
+import { useMenuStore } from '@/store/menuStore';
 import { menuItems } from '@/constants/data';
 import type { MenuItem } from '@/constants/data';
 
 const { width } = Dimensions.get('window');
-const SLIDE_W   = width - 40;
+const SLIDE_W = width - 40;
 
-// ── Promo slides ──────────────────────────────────────────────────────────────
-const promos = [
-  {
-    id: '1', tag: "TODAY'S SPECIAL",
-    title: "Ghana's Beloved\nGobe & Plantain", price: '₵18',
-    image: 'https://i.pinimg.com/1200x/1d/5c/97/1d5c97784ff0d314cfd2500415aab7de.jpg',
-    bg: '#1A1A1A',
-  },
-  {
-    id: '2', tag: 'MOST ORDERED',
-    title: 'Smoky Jollof Rice\n+ Chicken', price: '₵35',
-    image: 'https://i.pinimg.com/1200x/22/a6/d3/22a6d392b01182374f572e13f5e45f81.jpg',
-    bg: '#1C0A05',
-  },
-  {
-    id: '3', tag: 'TRADITIONAL PICK',
-    title: 'Classic Kenkey\n& Fried Fish', price: '₵22',
-    image: 'https://i.pinimg.com/736x/10/b3/e6/10b3e6ebb5be2c1066cc94c80270787f.jpg',
-    bg: '#0F0A1A',
-  },
-];
+// Promo banner slides are built at runtime from the menu's "Today's Special"
+// (isFeatured) items — see buildPromoSlides() inside HomeScreen.
+const PROMO_BGS = [Colors.primary, Colors.primaryDark, Colors.secondary];
 
 // ── Categories with a real food image each ────────────────────────────────────
 const CATS = [
@@ -60,7 +43,7 @@ const CAT_MAP: Record<string, string> = {
   snacks: 'Snacks', drinks: 'Drinks', breakfast: 'Breakfast',
 };
 
-// ── Big food card (reference style) ──────────────────────────────────────────
+// ── Big food card ─────────────────────────────────────────────────────────────
 function BigCard({
   item, onPress, onAdd,
 }: { item: MenuItem; onPress: () => void; onAdd: () => void }) {
@@ -68,18 +51,15 @@ function BigCard({
     <TouchableOpacity style={bc.card} onPress={onPress} activeOpacity={0.92}>
       <Image source={{ uri: item.image }} style={bc.img} contentFit="cover" transition={300} />
 
-      {/* Rating badge */}
       <View style={bc.ratingBadge}>
         <Ionicons name="star" size={11} color="#FFB800" />
         <Text style={bc.ratingTxt}>{item.rating.toFixed(1)}</Text>
       </View>
 
-      {/* Heart */}
       <View style={bc.heart}>
         <Ionicons name="heart-outline" size={16} color={Colors.white} />
       </View>
 
-      {/* Bottom info */}
       <View style={bc.footer}>
         <View style={bc.nameRow}>
           <Text style={bc.name} numberOfLines={1}>{item.name}</Text>
@@ -103,7 +83,6 @@ function BigCard({
         )}
       </View>
 
-      {/* Add button */}
       <TouchableOpacity style={bc.addBtn} onPress={onAdd} activeOpacity={0.85}>
         <Ionicons name="add" size={18} color={Colors.white} />
       </TouchableOpacity>
@@ -168,106 +147,149 @@ export default function HomeScreen() {
   const promoRef = useRef<FlatList>(null);
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-  const popular  = menuItems.filter((m) => m.isPopular);
-  const featured = menuItems.filter((m) => m.isFeatured);
+  const allItems = useMenuStore((s) => s.items).filter((m) => m.isAvailable);
+  const popular  = allItems.filter((m) => m.isPopular);
+  const featured = allItems.filter((m) => m.isFeatured);
+
+  // Banner = today's specials from the backend; fall back to popular dishes.
+  const promoSource = featured.length ? featured : popular;
+  const promoSlides = promoSource.slice(0, 5).map((item, i) => ({
+    id: item.id,
+    tag: item.isFeatured ? "TODAY'S SPECIAL" : 'MOST ORDERED',
+    title: item.name,
+    price: `₵${item.price}`,
+    image: item.image,
+    bg: PROMO_BGS[i % PROMO_BGS.length],
+  }));
 
   const hotItems = catId === 'all'
     ? [...featured, ...popular].filter((v, i, a) => a.findIndex(x => x.id === v.id) === i).slice(0, 8)
-    : menuItems.filter(m => m.category === (CAT_MAP[catId] ?? '')).slice(0, 8);
+    : allItems.filter(m => m.category === (CAT_MAP[catId] ?? '')).slice(0, 8);
 
-  // Auto-scroll promo
   useEffect(() => {
+    if (promoSlides.length <= 1) return;
     const t = setInterval(() => {
       setPromoIdx((prev) => {
-        const next = (prev + 1) % promos.length;
+        const next = (prev + 1) % promoSlides.length;
         promoRef.current?.scrollToIndex({ index: next, animated: true });
         return next;
       });
     }, 3800);
     return () => clearInterval(t);
-  }, []);
+  }, [promoSlides.length]);
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView style={s.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
-        {/* ── Header ───────────────────────────────────────────────────── */}
+        {/* ── Rich maroon header ───────────────────────────────────────── */}
         <View style={s.header}>
           <View style={s.hDeco1} />
           <View style={s.hDeco2} />
 
-          <View style={s.topRow}>
-            {/* Left: avatar initial */}
-            <View style={s.avatar}>
+          <View style={s.headerTop}>
+            <TouchableOpacity style={s.avatar} activeOpacity={0.85} onPress={() => router.push('/(tabs)/profile')}>
               <Text style={s.avatarTxt}>{firstName[0]?.toUpperCase() ?? 'U'}</Text>
+            </TouchableOpacity>
+
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={s.greeting}>{greeting} 👋</Text>
+              <Text style={s.nameTxt} numberOfLines={1}>{firstName}</Text>
             </View>
 
-            {/* Center: location */}
-            <View style={s.locBlock}>
-              <Text style={s.locLabel}>Location</Text>
-              <View style={s.locRow}>
-                <Ionicons name="location-sharp" size={13} color={Colors.accent} />
-                <Text style={s.locName}>Expert Catering, HTU</Text>
-              </View>
-            </View>
-
-            {/* Right: icons */}
             <View style={s.icons}>
               <TouchableOpacity style={s.iconBtn} onPress={() => router.push('/(tabs)/notifications')} activeOpacity={0.8}>
                 <Ionicons name="notifications-outline" size={20} color={Colors.white} />
+                <View style={s.notifDot} />
               </TouchableOpacity>
               <TouchableOpacity style={s.iconBtn} onPress={() => router.push('/cart')} activeOpacity={0.8}>
                 <Ionicons name="bag-outline" size={20} color={Colors.white} />
                 {totalItems() > 0 && (
-                  <View style={s.cartBadge}><Text style={s.cartBadgeTxt}>{totalItems()}</Text></View>
+                  <View style={s.cartBadge}>
+                    <Text style={s.cartBadgeTxt}>{totalItems()}</Text>
+                  </View>
                 )}
               </TouchableOpacity>
             </View>
           </View>
 
+          <View style={s.locRow}>
+            <Ionicons name="location-sharp" size={13} color={Colors.accent} />
+            <Text style={s.locName}>Expert Catering, HTU</Text>
+            <Ionicons name="chevron-down" size={12} color="rgba(255,255,255,0.6)" />
+          </View>
+
+          <TouchableOpacity style={s.searchBar} activeOpacity={0.9} onPress={() => router.push('/(tabs)/menu')}>
+            <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
+            <Text style={s.searchPlaceholder}>Search meals, drinks…</Text>
+            <View style={s.searchIconBtn}>
+              <Ionicons name="options-outline" size={16} color={Colors.white} />
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* ── Promo Carousel ───────────────────────────────────────────── */}
-        <View style={s.carouselWrap}>
-          <FlatList
-            ref={promoRef}
-            data={promos}
-            horizontal pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(p) => p.id}
-            onMomentumScrollEnd={(e) =>
-              setPromoIdx(Math.round(e.nativeEvent.contentOffset.x / SLIDE_W))
-            }
-            renderItem={({ item: p }) => (
-              <View style={[s.promoCard, { backgroundColor: p.bg, width: SLIDE_W }]}>
-                {/* Image right side */}
-                <View style={s.promoImgWrap}>
-                  <Image source={{ uri: p.image }} style={s.promoImg} contentFit="cover" transition={300} />
-                  <View style={s.promoImgFade} />
-                </View>
-                {/* Text left */}
-                <View style={s.promoText}>
-                  <View style={s.promoTag}>
-                    <Text style={s.promoTagTxt}>{p.tag}</Text>
+        {/* ── Promo Carousel (Today's Special, from backend) ───────────── */}
+        {promoSlides.length > 0 && (
+          <View style={s.carouselWrap}>
+            <FlatList
+              ref={promoRef}
+              data={promoSlides}
+              horizontal pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(p) => p.id}
+              onMomentumScrollEnd={(e) =>
+                setPromoIdx(Math.round(e.nativeEvent.contentOffset.x / SLIDE_W))
+              }
+              renderItem={({ item: p }) => (
+                <TouchableOpacity
+                  activeOpacity={0.92}
+                  onPress={() => router.push(`/food/${p.id}`)}
+                  style={[s.promoCard, { backgroundColor: p.bg, width: SLIDE_W }]}
+                >
+                  {/* Decorative blobs */}
+                  <View style={s.promoDeco1} />
+                  <View style={s.promoDeco2} />
+
+                  {/* Image right side */}
+                  <View style={s.promoImgWrap}>
+                    <Image source={{ uri: p.image }} style={s.promoImg} contentFit="cover" transition={300} />
+                    <View style={s.promoImgFade} />
                   </View>
-                  <Text style={s.promoTitle}>{p.title}</Text>
-                  <View style={s.promoBottom}>
-                    <Text style={s.promoPrice}>{p.price}</Text>
-                    <TouchableOpacity style={s.promoBtn} onPress={() => router.push('/(tabs)/menu')} activeOpacity={0.85}>
-                      <Text style={s.promoBtnTxt}>Order Now</Text>
-                    </TouchableOpacity>
+
+                  {/* Text left */}
+                  <View style={s.promoText}>
+                    <View style={s.promoTag}>
+                      <Text style={s.promoTagTxt}>{p.tag}</Text>
+                    </View>
+                    <Text style={s.promoTitle} numberOfLines={2}>{p.title}</Text>
+                    <View style={s.promoBottom}>
+                      <Text style={s.promoPrice}>{p.price}</Text>
+                      <TouchableOpacity
+                        style={s.promoBtn}
+                        onPress={() => router.push(`/food/${p.id}`)}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={s.promoBtnTxt}>Order Now</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
+                </TouchableOpacity>
+              )}
+            />
+
+            {/* Dot indicators */}
+            {promoSlides.length > 1 && (
+              <View style={s.dots}>
+                {promoSlides.map((_, i) => (
+                  <View key={i} style={[s.dot, i === promoIdx && s.dotActive]} />
+                ))}
               </View>
             )}
-          />
-          <View style={s.dots}>
-            {promos.map((_, i) => (
-              <View key={i} style={[s.dot, i === promoIdx && s.dotActive]} />
-            ))}
           </View>
-        </View>
+        )}
 
         {/* ── Select by Category ───────────────────────────────────────── */}
         <View style={s.section}>
@@ -282,11 +304,9 @@ export default function HomeScreen() {
                   onPress={() => setCatId(cat.id)}
                   activeOpacity={0.8}
                 >
-                  {/* Circle food image */}
                   <View style={[s.catImgWrap, active && s.catImgWrapActive]}>
                     <Image source={{ uri: cat.img }} style={s.catImg} contentFit="cover" transition={200} />
                   </View>
-                  {/* Label — always visible, color changes */}
                   <Text style={[s.catLabel, active && s.catLabelActive]}>{cat.label}</Text>
                 </TouchableOpacity>
               );
@@ -347,68 +367,104 @@ export default function HomeScreen() {
 }
 
 const s = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: Colors.background },
-  scroll: { paddingBottom: 20 },
+  safe:       { flex: 1, backgroundColor: Colors.primary },
+  scrollView: { flex: 1, backgroundColor: Colors.backgroundAlt },
+  scroll:     { paddingBottom: 24 },
 
-  // Header
+  // ── Rich maroon header ──────────────────────────────────────────────────────
   header: {
     backgroundColor: Colors.primary,
-    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 30,
+    gap: 16,
     overflow: 'hidden',
   },
   hDeco1: {
-    position: 'absolute', width: 220, height: 220, borderRadius: 110,
-    backgroundColor: 'rgba(255,255,255,0.06)', top: -90, right: -50,
+    position: 'absolute', width: 180, height: 180, borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.06)', top: -80, right: -40,
   },
   hDeco2: {
     position: 'absolute', width: 110, height: 110, borderRadius: 55,
-    backgroundColor: 'rgba(255,255,255,0.05)', bottom: 8, left: 40,
+    backgroundColor: 'rgba(255,255,255,0.05)', top: 44, left: -50,
   },
-  topRow: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 10, marginBottom: 16,
-  },
+
+  headerTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarTxt: { fontSize: 16, fontWeight: '800', color: Colors.white },
-  locBlock:  { flex: 1 },
-  locLabel:  { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
-  locRow:    { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 },
-  locName:   { fontSize: 13, fontWeight: '700', color: Colors.white },
-  icons:     { flexDirection: 'row', gap: 8 },
+  avatarTxt: { fontSize: 18, fontWeight: '800', color: Colors.white },
+  greeting: { fontSize: 12.5, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+  nameTxt:  { fontSize: 19, fontWeight: '800', color: Colors.white, marginTop: 1 },
+
+  icons: { flexDirection: 'row', gap: 10 },
   iconBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center', justifyContent: 'center',
+  },
+  notifDot: {
+    position: 'absolute', top: 10, right: 11,
+    width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.accent,
+    borderWidth: 1, borderColor: Colors.primary,
   },
   cartBadge: {
     position: 'absolute', top: -2, right: -2,
     backgroundColor: Colors.accent, borderRadius: 8,
-    minWidth: 15, height: 15, paddingHorizontal: 3,
+    minWidth: 16, height: 16, paddingHorizontal: 3,
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: Colors.primary,
   },
   cartBadgeTxt: { color: Colors.white, fontSize: 9, fontWeight: '800' },
-  search: {
+
+  locRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 6,
+  },
+  locName: { fontSize: 12.5, fontWeight: '700', color: Colors.white },
+
+  searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: Colors.white, borderRadius: 14,
-    paddingHorizontal: 14, paddingVertical: 12,
-    shadowColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: Colors.white, borderRadius: 16,
+    paddingLeft: 14, paddingRight: 6, paddingVertical: 6,
+    shadowColor: 'rgba(0,0,0,0.18)',
     shadowOffset: { width: 0, height: 6 }, shadowOpacity: 1, shadowRadius: 14, elevation: 6,
   },
-
-  // Promo carousel
-  carouselWrap: { marginTop: -20, paddingHorizontal: 20, marginBottom: 6 },
-  promoCard: {
-    borderRadius: 20, flexDirection: 'row',
-    height: 155, overflow: 'hidden',
-    shadowColor: 'rgba(0,0,0,0.3)',
-    shadowOffset: { width: 0, height: 8 }, shadowOpacity: 1, shadowRadius: 16, elevation: 12,
+  searchPlaceholder: { flex: 1, fontSize: 14, color: Colors.textMuted, paddingVertical: 8 },
+  searchIconBtn: {
+    width: 36, height: 36, borderRadius: 12,
+    backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center',
   },
+
+  // ── Promo carousel (lifts off the header) ───────────────────────────────────
+  carouselWrap: { paddingHorizontal: 20, marginTop: -18, marginBottom: 4, zIndex: 2 },
+
+  promoCard: {
+    borderRadius: 22,
+    flexDirection: 'row',
+    height: 160,
+    overflow: 'hidden',
+    shadowColor: 'rgba(85,5,39,0.35)',
+    shadowOffset: { width: 0, height: 10 }, shadowOpacity: 1, shadowRadius: 20, elevation: 14,
+  },
+
+  // Subtle decorative blobs inside the card
+  promoDeco1: {
+    position: 'absolute', width: 200, height: 200, borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.06)', top: -80, right: -30,
+  },
+  promoDeco2: {
+    position: 'absolute', width: 110, height: 110, borderRadius: 55,
+    backgroundColor: 'rgba(255,255,255,0.05)', bottom: -30, left: 50,
+  },
+
   promoText:   { flex: 1, padding: 18, justifyContent: 'space-between', zIndex: 1 },
-  promoTag:    {
+  promoTag: {
     alignSelf: 'flex-start', backgroundColor: Colors.accent,
     borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
   },
@@ -421,17 +477,20 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 7,
   },
   promoBtnTxt: { fontSize: 12, fontWeight: '700', color: Colors.primary },
-  promoImgWrap: { width: 140, position: 'relative' },
+
+  promoImgWrap: { width: 145, position: 'relative' },
   promoImg:     { width: '100%', height: '100%' },
   promoImgFade: {
-    position: 'absolute', top: 0, left: 0, bottom: 0, width: 40,
+    position: 'absolute', top: 0, left: 0, bottom: 0, width: 36,
     backgroundColor: 'transparent',
   },
-  dots:     { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 10 },
-  dot:      { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.border },
-  dotActive: { width: 20, backgroundColor: Colors.primary },
 
-  // Sections
+  // Dot indicators
+  dots:     { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 12 },
+  dot:      { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.border },
+  dotActive: { width: 22, borderRadius: 3, backgroundColor: Colors.primary },
+
+  // ── Sections ────────────────────────────────────────────────────────────────
   section:    { marginTop: 26 },
   sectionRow: {
     flexDirection: 'row', alignItems: 'center',
@@ -441,10 +500,9 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, paddingHorizontal: 20, marginBottom: 14 },
   seeAll:       { fontSize: 13, color: Colors.primary, fontWeight: '600' },
 
-  // Categories with food images
+  // ── Category chips ──────────────────────────────────────────────────────────
   catsRow: { paddingHorizontal: 20, gap: 10 },
 
-  // Inactive chip: image circle + gray label side by side, no bg
   catChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -453,7 +511,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 6,
     borderRadius: 28,
   },
-  // Active chip: same layout wrapped in a red pill with shadow
   catChipActive: {
     backgroundColor: Colors.primary,
     paddingLeft: 5,
@@ -465,9 +522,8 @@ const s = StyleSheet.create({
     elevation: 6,
   },
 
-  // Image circle inside chip
   catImgWrap: {
-    width: 42, height: 42, borderRadius: 21,
+    width: 44, height: 44, borderRadius: 22,
     overflow: 'hidden',
     borderWidth: 2, borderColor: Colors.border,
   },
@@ -483,9 +539,7 @@ const s = StyleSheet.create({
     color: Colors.white, fontWeight: '800',
   },
 
-  // Hot list
+  // ── Lists ────────────────────────────────────────────────────────────────────
   hotList:  { paddingHorizontal: 20, gap: 14 },
-
-  // Most Loved vertical
   vertList: { paddingHorizontal: 20, gap: 10 },
 });

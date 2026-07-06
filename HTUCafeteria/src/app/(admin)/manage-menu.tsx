@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -16,6 +17,8 @@ import { menuItems as initialItems, type MenuItem } from '@/constants/data';
 export default function ManageMenuScreen() {
   const [items, setItems] = useState(initialItems);
   const [search, setSearch] = useState('');
+  const { width } = useWindowDimensions();
+  const isWide = width >= 900;
 
   const toggleAvailability = (id: string) => {
     setItems((prev) =>
@@ -65,7 +68,7 @@ export default function ManageMenuScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, isWide && styles.listWide]}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <View style={[styles.card, !item.isAvailable && styles.cardUnavailable]}>
@@ -146,6 +149,8 @@ const styles = StyleSheet.create({
   summaryDivider: { width: 1, backgroundColor: Colors.divider },
 
   list: { padding: 12, paddingBottom: 24 },
+  // Wide screens (tablet / desktop web): center the menu list at a readable width
+  listWide: { maxWidth: 860, width: '100%', alignSelf: 'center' },
 
   card: {
     flexDirection: 'row',

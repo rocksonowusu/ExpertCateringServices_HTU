@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { mockOrders, type Order } from '@/constants/data';
+import { type Order } from '@/constants/data';
+import { useOrdersStore } from '@/store/ordersStore';
 
 type Status = Order['status'];
 
@@ -39,29 +41,31 @@ function formatTime(iso: string) {
 }
 
 export default function ManageOrdersScreen() {
-  const [orders, setOrders] = useState(mockOrders);
+  const { orders, loadAll, updateStatus, subscribe } = useOrdersStore();
   const [filter, setFilter] = useState<'all' | Status>('all');
+  const { width } = useWindowDimensions();
+  const isWide = width >= 900;
+
+  // Load once, then keep the list live via Supabase realtime.
+  useEffect(() => {
+    loadAll();
+    const unsubscribe = subscribe();
+    return unsubscribe;
+  }, [loadAll, subscribe]);
 
   const filtered = filter === 'all' ? orders : orders.filter((o) => o.status === filter);
 
-  const advanceStatus = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (o.id !== orderId) return o;
-        const cfg = statusConfig[o.status];
-        if (!cfg.next) return o;
-        return { ...o, status: cfg.next };
-      })
-    );
+  const advanceStatus = (orderCode: string) => {
+    const order = orders.find((o) => o.id === orderCode);
+    const next = order ? statusConfig[order.status].next : undefined;
+    if (next) updateStatus(orderCode, next);
   };
 
-  const cancelOrder = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' as Status } : o))
-    );
+  const cancelOrder = (orderCode: string) => {
+    updateStatus(orderCode, 'cancelled');
   };
 
-  const counts = mockOrders.reduce(
+  const counts = orders.reduce(
     (acc, o) => ({ ...acc, [o.status]: (acc[o.status] ?? 0) + 1 }),
     {} as Record<string, number>
   );
@@ -109,7 +113,7 @@ export default function ManageOrdersScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, isWide && styles.listWide]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -246,6 +250,8 @@ const styles = StyleSheet.create({
   tabCountTextActive: { color: Colors.white },
 
   list: { padding: 12, paddingBottom: 24 },
+  // Wide screens (tablet / desktop web): center the order feed at a readable width
+  listWide: { maxWidth: 860, width: '100%', alignSelf: 'center' },
 
   orderCard: {
     backgroundColor: Colors.white,

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
+import { useOrdersStore } from '@/store/ordersStore';
 
 const PICKUP_TIMES = [
   'ASAP (15-20 min)',
@@ -34,6 +35,7 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { items, totalPrice, clearCart } = useCartStore();
+  const { placeOrder } = useOrdersStore();
   const [pickupTime, setPickupTime] = useState(PICKUP_TIMES[0]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('on_delivery');
   const [momoPhone, setMomoPhone] = useState(user?.phone ?? '');
@@ -51,10 +53,24 @@ export default function CheckoutScreen() {
       return;
     }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    setLoading(false);
-    clearCart();
-    router.replace('/order-success');
+    try {
+      const order = await placeOrder({
+        items: items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price })),
+        total,
+        paymentMethod,
+        pickupTime,
+        notes: notes.trim() || undefined,
+        userId: user?.id,
+        customerName: user?.name,
+      });
+      clearCart();
+      router.replace({ pathname: '/order-success', params: { code: order.id } });
+    } catch (e: any) {
+      const detail = e?.message ? `\n\nDetails: ${e.message}` : '';
+      Alert.alert('Order Failed', `We could not place your order. Please check your connection and try again.${detail}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

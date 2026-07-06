@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
+  Dimensions,
   FlatList,
   StyleSheet,
   Text,
@@ -8,38 +9,107 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { Image } from 'expo-image';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { FoodCard } from '@/components/FoodCard';
 import { useCartStore } from '@/store/cartStore';
-import { categories, menuItems } from '@/constants/data';
+import { useMenuStore } from '@/store/menuStore';
+import type { MenuItem } from '@/constants/data';
 
-const CATS = [
-  { id: 'all',       label: 'All',          emoji: '🍽️' },
-  { id: 'rice',      label: 'Rice Dishes',  emoji: '🍚' },
-  { id: 'soups',     label: 'Soups & Stews',emoji: '🍲' },
-  { id: 'fastfood',  label: 'Fast Food',    emoji: '🍔' },
-  { id: 'snacks',    label: 'Snacks',       emoji: '🥪' },
-  { id: 'drinks',    label: 'Drinks',       emoji: '🥤' },
-  { id: 'breakfast', label: 'Breakfast',    emoji: '🍳' },
-];
+const { width } = Dimensions.get('window');
+const CARD_W = (width - 16 * 2 - 12) / 2;
+
+function GridCard({ item, onPress, onAdd }: { item: MenuItem; onPress: () => void; onAdd: () => void }) {
+  return (
+    <TouchableOpacity style={gc.card} onPress={onPress} activeOpacity={0.88}>
+      <View style={gc.imgWrap}>
+        <Image source={{ uri: item.image }} style={gc.img} contentFit="cover" transition={250} />
+        {item.isPopular && (
+          <View style={gc.badge}>
+            <Text style={gc.badgeTxt}>Popular</Text>
+          </View>
+        )}
+        <TouchableOpacity style={gc.heartBtn} activeOpacity={0.8}>
+          <Ionicons name="heart-outline" size={14} color={Colors.primary} />
+        </TouchableOpacity>
+      </View>
+      <View style={gc.body}>
+        <Text style={gc.name} numberOfLines={2}>{item.name}</Text>
+        <View style={gc.ratingRow}>
+          <Ionicons name="star" size={11} color={Colors.accent} />
+          <Text style={gc.ratingTxt}>{item.rating.toFixed(1)}</Text>
+          <Text style={gc.dot}>·</Text>
+          <Ionicons name="time-outline" size={11} color={Colors.textMuted} />
+          <Text style={gc.timeTxt}>{item.prepTime}</Text>
+        </View>
+        <View style={gc.priceRow}>
+          <Text style={gc.price}>₵{item.price}</Text>
+          <TouchableOpacity style={gc.addBtn} onPress={onAdd} activeOpacity={0.8}>
+            <Ionicons name="add" size={18} color={Colors.white} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const gc = StyleSheet.create({
+  card: {
+    width: CARD_W,
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: 'rgba(0,0,0,0.10)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  imgWrap: { width: '100%', height: 130, position: 'relative' },
+  img:     { width: '100%', height: '100%' },
+  badge: {
+    position: 'absolute', top: 8, left: 8,
+    backgroundColor: Colors.accent,
+    borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
+  },
+  badgeTxt: { fontSize: 9, fontWeight: '800', color: Colors.white },
+  heartBtn: {
+    position: 'absolute', top: 8, right: 8,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: Colors.white,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  body: { padding: 10, gap: 4 },
+  name: { fontSize: 13, fontWeight: '700', color: Colors.text, lineHeight: 17 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  ratingTxt: { fontSize: 11, fontWeight: '700', color: Colors.text },
+  dot:       { fontSize: 11, color: Colors.textMuted },
+  timeTxt:   { fontSize: 11, color: Colors.textMuted },
+  priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
+  price:    { fontSize: 15, fontWeight: '800', color: Colors.primary },
+  addBtn: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+});
 
 export default function MenuScreen() {
   const router = useRouter();
   const { addItem, totalItems } = useCartStore();
+  const allItems = useMenuStore((s) => s.items);
+  const loadMenu = useMenuStore((s) => s.loadMenu);
   const [search, setSearch]   = useState('');
-  const [catId, setCatId]     = useState('all');
 
-  const filtered = menuItems.filter((item) => {
-    const matchSearch =
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.description.toLowerCase().includes(search.toLowerCase());
-    const matchCat =
-      catId === 'all' ||
-      item.category === categories.find((c) => c.id === catId)?.name;
-    return matchSearch && matchCat;
-  });
+  // Refresh the menu each time the tab is focused (picks up admin availability changes).
+  useFocusEffect(useCallback(() => { loadMenu(); }, [loadMenu]));
+
+  const filtered = allItems.filter((item) =>
+    item.isAvailable &&
+    (item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.description.toLowerCase().includes(search.toLowerCase()))
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -51,7 +121,7 @@ export default function MenuScreen() {
 
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.headerTitle}>Menu 🍽️</Text>
+            <Text style={styles.headerTitle}>Menu</Text>
             <Text style={styles.headerSub}>What are you craving today?</Text>
           </View>
           <TouchableOpacity
@@ -87,36 +157,10 @@ export default function MenuScreen() {
         </View>
       </View>
 
-      {/* ── Category chips ────────────────────────────────── */}
-      <FlatList
-        data={CATS}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(c) => c.id}
-        contentContainerStyle={styles.catList}
-        style={styles.catRow}
-        renderItem={({ item: cat }) => {
-          const active = catId === cat.id;
-          return (
-            <TouchableOpacity
-              style={[styles.catChip, active && styles.catChipActive]}
-              onPress={() => setCatId(cat.id)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.catEmoji}>{cat.emoji}</Text>
-              <Text style={[styles.catLabel, active && styles.catLabelActive]}>
-                {cat.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
-      />
-
       {/* ── Results count ─────────────────────────────────── */}
       <View style={styles.resultsRow}>
         <Text style={styles.resultsText}>
           {filtered.length} {filtered.length === 1 ? 'item' : 'items'}
-          {catId !== 'all' && ` · ${CATS.find(c => c.id === catId)?.label}`}
         </Text>
         {search.length > 0 && (
           <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7}>
@@ -125,26 +169,26 @@ export default function MenuScreen() {
         )}
       </View>
 
-      {/* ── Items list ────────────────────────────────────── */}
+      {/* ── Items grid ────────────────────────────────────── */}
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>🍽️</Text>
+            <Ionicons name="restaurant" size={48} color={Colors.textMuted} />
             <Text style={styles.emptyTitle}>No items found</Text>
             <Text style={styles.emptySub}>Try a different search or category</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <FoodCard
+          <GridCard
             item={item}
             onPress={() => router.push(`/food/${item.id}`)}
-            onAddToCart={() => addItem(item)}
-            horizontal
+            onAdd={() => addItem(item)}
           />
         )}
       />
@@ -201,24 +245,6 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 14, color: Colors.text },
 
-  // Category row
-  catRow: { maxHeight: 56, marginTop: 14 },
-  catList: { paddingHorizontal: 20, gap: 8 },
-  catChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 14, paddingVertical: 9,
-    borderRadius: 20,
-    backgroundColor: Colors.backgroundAlt,
-    borderWidth: 1.5, borderColor: Colors.border,
-  },
-  catChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  catEmoji:      { fontSize: 15 },
-  catLabel:      { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
-  catLabelActive: { color: Colors.white },
-
   // Results
   resultsRow: {
     flexDirection: 'row', alignItems: 'center',
@@ -228,10 +254,10 @@ const styles = StyleSheet.create({
   resultsText:  { fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
   clearSearch:  { fontSize: 12, color: Colors.primary, fontWeight: '600' },
 
-  // List
-  list:      { paddingHorizontal: 16, paddingBottom: 24 },
+  // Grid list
+  row:  { paddingHorizontal: 16, gap: 12, marginBottom: 12 },
+  list: { paddingBottom: 24, paddingTop: 4 },
   empty:     { alignItems: 'center', paddingTop: 60, gap: 8 },
-  emptyIcon: { fontSize: 48 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
   emptySub:  { fontSize: 14, color: Colors.textSecondary },
 });

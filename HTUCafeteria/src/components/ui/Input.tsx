@@ -19,6 +19,7 @@ interface InputProps {
   secureTextEntry?: boolean;
   keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoCorrect?: boolean;
   error?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -36,6 +37,7 @@ export function Input({
   secureTextEntry = false,
   keyboardType = 'default',
   autoCapitalize = 'sentences',
+  autoCorrect = true,
   error,
   leftIcon,
   rightIcon,
@@ -67,6 +69,7 @@ export function Input({
           secureTextEntry={secureTextEntry && !showPassword}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
           editable={editable}
           multiline={multiline}
           numberOfLines={numberOfLines}

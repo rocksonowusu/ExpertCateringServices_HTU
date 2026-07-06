@@ -6,11 +6,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useEffect } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useAuthStore } from '@/store/authStore';
-import { mockOrders, menuItems } from '@/constants/data';
+import { useOrdersStore } from '@/store/ordersStore';
+import { menuItems } from '@/constants/data';
 
 interface StatCardProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -21,8 +24,10 @@ interface StatCardProps {
 }
 
 function StatCard({ icon, label, value, sub, color }: StatCardProps) {
+  const { width } = useWindowDimensions();
+  const isWide = width >= 900;
   return (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
+    <View style={[styles.statCard, isWide && styles.statCardWide, { borderLeftColor: color }]}>
       <View style={[styles.statIcon, { backgroundColor: color + '15' }]}>
         <Ionicons name={icon} size={20} color={color} />
       </View>
@@ -35,18 +40,26 @@ function StatCard({ icon, label, value, sub, color }: StatCardProps) {
   );
 }
 
-const todayOrders = mockOrders.slice(0, 3);
-const todayRevenue = todayOrders
-  .filter((o) => o.status !== 'cancelled')
-  .reduce((a, o) => a + o.total, 0);
-
-const statusCounts = mockOrders.reduce(
-  (acc, o) => ({ ...acc, [o.status]: (acc[o.status as keyof typeof acc] ?? 0) + 1 }),
-  {} as Record<string, number>
-);
-
 export default function AdminDashboard() {
-  const { user, logout } = useAuthStore();
+  const { logout } = useAuthStore();
+  const { orders, loadAll, subscribe } = useOrdersStore();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 900;
+
+  useEffect(() => {
+    loadAll();
+    const unsubscribe = subscribe();
+    return unsubscribe;
+  }, [loadAll, subscribe]);
+
+  const todayRevenue = orders
+    .filter((o) => o.status !== 'cancelled')
+    .reduce((a, o) => a + o.total, 0);
+
+  const statusCounts = orders.reduce(
+    (acc, o) => ({ ...acc, [o.status]: (acc[o.status] ?? 0) + 1 }),
+    {} as Record<string, number>
+  );
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Sign out of the admin panel?', [
@@ -57,7 +70,10 @@ export default function AdminDashboard() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, isWide && styles.scrollWide]}
+      >
 
         {/* Header */}
         <View style={styles.header}>
@@ -78,7 +94,7 @@ export default function AdminDashboard() {
             <StatCard
               icon="receipt-outline"
               label="Total Orders"
-              value={String(mockOrders.length)}
+              value={String(orders.length)}
               sub="Today"
               color={Colors.primary}
             />
@@ -144,7 +160,7 @@ export default function AdminDashboard() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Orders</Text>
           <View style={styles.ordersList}>
-            {mockOrders.slice(0, 4).map((order) => {
+            {orders.slice(0, 4).map((order) => {
               const statusColors: Record<string, string> = {
                 pending: Colors.statusPending,
                 preparing: Colors.statusPreparing,
@@ -205,6 +221,9 @@ export default function AdminDashboard() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.backgroundAlt },
   scroll: { paddingBottom: 24 },
+  // Wide screens (tablet / desktop web): center content at a readable width
+  scrollWide: { maxWidth: 1100, width: '100%', alignSelf: 'center' },
+  statCardWide: { minWidth: '30%' },
 
   header: {
     flexDirection: 'row',

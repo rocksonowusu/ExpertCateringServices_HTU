@@ -57,6 +57,10 @@ export default function AdminLayout() {
           ),
         }}
       />
+      {/* Web-only admin routes — hidden from the mobile tab bar */}
+      <Tabs.Screen name="pos" options={{ href: null }} />
+      <Tabs.Screen name="transactions" options={{ href: null }} />
+      <Tabs.Screen name="customers" options={{ href: null }} />
     </Tabs>
   );
 }

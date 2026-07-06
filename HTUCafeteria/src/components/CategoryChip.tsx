@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 
 interface CategoryChipProps {
@@ -16,7 +17,11 @@ export function CategoryChip({ label, icon, selected, onPress }: CategoryChipPro
       activeOpacity={0.8}
       style={[styles.chip, selected && styles.selected]}
     >
-      <Text style={styles.icon}>{icon}</Text>
+      <Ionicons
+        name={icon as keyof typeof Ionicons.glyphMap}
+        size={16}
+        color={selected ? Colors.white : Colors.textSecondary}
+      />
       <Text style={[styles.label, selected && styles.selectedLabel]}>{label}</Text>
     </TouchableOpacity>
   );
@@ -38,7 +43,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  icon: { fontSize: 14 },
   label: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
   selectedLabel: { color: Colors.white },
 });

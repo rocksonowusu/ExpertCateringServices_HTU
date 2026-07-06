@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   FlatList,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { OrderCard } from '@/components/OrderCard';
-import { mockOrders } from '@/constants/data';
+import { useOrdersStore } from '@/store/ordersStore';
+import { useAuthStore } from '@/store/authStore';
 
 const TABS = ['Active', 'History'] as const;
 type TabType = typeof TABS[number];
@@ -20,8 +21,18 @@ const historyStatuses = ['delivered', 'cancelled'];
 
 export default function OrdersScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('Active');
+  const { user } = useAuthStore();
+  const { orders, loadMine } = useOrdersStore();
 
-  const filtered = mockOrders.filter((o) =>
+  useFocusEffect(
+    useCallback(() => {
+      loadMine(user?.id);
+    }, [user?.id, loadMine])
+  );
+
+  const activeCount = orders.filter((o) => activeStatuses.includes(o.status)).length;
+
+  const filtered = orders.filter((o) =>
     activeTab === 'Active'
       ? activeStatuses.includes(o.status)
       : historyStatuses.includes(o.status)
@@ -46,11 +57,9 @@ export default function OrdersScreen() {
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
               {tab}
             </Text>
-            {tab === 'Active' && mockOrders.filter((o) => activeStatuses.includes(o.status)).length > 0 && (
+            {tab === 'Active' && activeCount > 0 && (
               <View style={styles.tabBadge}>
-                <Text style={styles.tabBadgeText}>
-                  {mockOrders.filter((o) => activeStatuses.includes(o.status)).length}
-                </Text>
+                <Text style={styles.tabBadgeText}>{activeCount}</Text>
               </View>
             )}
           </TouchableOpacity>
